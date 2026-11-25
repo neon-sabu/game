@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ワードウルフ</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--tx:#1f2430;--sub:#6b7280;--ac:#d9480f;--ac2:#fff;--bd:#e5e1d8;--ok:#2b8a3e;--ng:#c92a2a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171c;--card:#1f232b;--tx:#eceae4;--sub:#9aa0ab;--ac:#ff8a4c;--ac2:#1a1a1a;--bd:#323846;--ok:#69db7c;--ng:#ff8787}}
+:root[data-theme="dark"]{--bg:#15171c;--card:#1f232b;--tx:#eceae4;--sub:#9aa0ab;--ac:#ff8a4c;--ac2:#1a1a1a;--bd:#323846;--ok:#69db7c;--ng:#ff8787}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.6}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:26px;margin:8px 0 4px;text-align:center}
+h2{font-size:20px;margin:0 0 12px;text-align:center}
+.sub{color:var(--sub);text-align:center;font-size:14px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+label{font-weight:600}
+.step{display:flex;align-items:center;gap:12px}
+.step b{min-width:28px;text-align:center;font-size:20px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:10px 14px}
+button.main{background:var(--ac);color:var(--ac2);border-color:var(--ac);font-weight:700;width:100%;padding:14px;font-size:17px;margin-top:6px}
+button.round{width:38px;height:38px;padding:0;font-size:20px}
+button.alt{width:100%;margin-top:8px}
+input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);margin:4px 0}
+.big{font-size:34px;font-weight:800;text-align:center;margin:18px 0}
+.word{font-size:40px;font-weight:800;text-align:center;margin:26px 0;color:var(--ac)}
+.timer{font-size:64px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin:10px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid button{padding:14px 8px;font-weight:600}
+.win{font-size:22px;font-weight:800;text-align:center;margin:6px 0 12px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;color:var(--ac2)}
+.w{background:var(--ng)}.c{background:var(--ok)}
+ul{list-style:none;padding:0;margin:0}
+li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
+li:last-child{border:0}
+.note{font-size:13px;color:var(--sub);text-align:center}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+var PAIRS=[["りんご","なし"],["コーヒー","紅茶"],["犬","オオカミ"],["海","プール"],["カレー","シチュー"],["ラーメン","うどん"],["バス","電車"],["スキー","スノーボード"],["映画館","劇場"],["ボールペン","万年筆"],["寿司","刺身"],["ピアノ","オルガン"],["猫","ライオン"],["サッカー","フットサル"],["メロン","スイカ"],["冷蔵庫","冷凍庫"],["傘","レインコート"],["マフラー","ネックウォーマー"],["図書館","本屋"],["コンビニ","スーパー"],["ハンバーガー","サンドイッチ"],["桜","梅"],["夏休み","冬休み"],["ホテル","旅館"],["みかん","オレンジ"],["日の出","夕焼け"],["カラオケ","ライブ"],["自転車","バイク"],["牛乳","豆乳"],["お風呂","温泉"],["やきそば","お好み焼き"],["消しゴム","修正テープ"],["テント","ハンモック"],["時計","タイマー"],["チョコレート","キャラメル"]];
+var S={n:5,wolves:1,min:3,names:[],step:"setup",i:0,shown:false,pair:null,wolfIdx:[],voted:-1,left:0,tid:null,running:false};
+var app=document.getElementById("app");
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function nm(i){return S.names[i]&&S.names[i].trim()?S.names[i].trim():"プレイヤー"+(i+1)}
+function maxWolves(){return S.n>=7?2:1}
+function setup(){
+  S.step="setup";clearInterval(S.tid);S.running=false;
+  if(S.wolves>maxWolves())S.wolves=maxWolves();
+  var h='<h1>ワードウルフ</h1><p class="sub">1台のスマホを回して遊ぶ、3〜10人用</p><div class="card">';
+  h+='<div class="row"><label>人数</label><div class="step"><button class="round" data-a="n-">−</button><b>'+S.n+'</b><button class="round" data-a="n+">+</button></div></div>';
+  h+='<div class="row"><label>ウルフの数</label><div class="step"><button class="round" data-a="w-">−</button><b>'+S.wolves+'</b><button class="round" data-a="w+">+</button></div></div>';
+  h+='<div class="row"><label>議論時間(分)</label><div class="step"><button class="round" data-a="m-">−</button><b>'+S.min+'</b><button class="round" data-a="m+">+</button></div></div>';
+  h+='</div><div class="card"><label>名前(空欄でもOK)</label>';
+  for(var i=0;i<S.n;i++)h+='<input type="text" data-i="'+i+'" maxlength="10" placeholder="プレイヤー'+(i+1)+'" value="'+esc(S.names[i]||"")+'">';
+  h+='</div><button class="main" data-a="start">ゲーム開始</button>';
+  app.innerHTML=h;
+}
+function start(){
+  var p=PAIRS[Math.floor(Math.random()*PAIRS.length)];
+  S.pair=Math.random()<.5?[p[0],p[1]]:[p[1],p[0]];
+  var idx=[];for(var i=0;i<S.n;i++)idx.push(i);
+  for(var j=idx.length-1;j>0;j--){var k=Math.floor(Math.random()*(j+1));var t=idx[j];idx[j]=idx[k];idx[k]=t}
+  S.wolfIdx=idx.slice(0,S.wolves);S.i=0;S.shown=false;S.voted=-1;reveal();
+}
+function isWolf(i){return S.wolfIdx.indexOf(i)>=0}
+function reveal(){
+  S.step="reveal";
+  var h='<h2>お題の確認</h2><p class="sub">'+(S.i+1)+' / '+S.n+'</p><div class="card">';
+  if(!S.shown){
+    h+='<div class="big">'+esc(nm(S.i))+'さん</div><p class="note">他の人に見えないようにして、ボタンを押してください</p><button class="main" data-a="show">お題を見る</button>';
+  }else{
+    h+='<p class="note">'+esc(nm(S.i))+'さんのお題</p><div class="word">'+esc(isWolf(S.i)?S.pair[1]:S.pair[0])+'</div><p class="note">覚えたら隠して、次の人に渡してください</p><button class="main" data-a="hide">'+(S.i+1<S.n?"隠して次の人へ":"隠して議論をはじめる")+'</button>';
+  }
+  h+='</div>';app.innerHTML=h;
+}
+function fmt(s){var m=Math.floor(s/60),r=s%60;return m+":"+(r<10?"0":"")+r}
+function discuss(){
+  S.step="discuss";S.left=S.min*60;S.running=false;
+  app.innerHTML='<h2>議論タイム</h2><p class="sub">お題について話しながら、ウルフを探そう。自分のお題は言わないこと!</p><div class="card"><div class="timer" id="t">'+fmt(S.left)+'</div><button class="main" data-a="tg" id="tg">タイマー開始</button></div><button class="alt" data-a="vote">投票へ進む</button>';
+}
+function tick(){
+  S.left--;var t=document.getElementById("t");if(t)t.textContent=fmt(Math.max(S.left,0));
+  if(S.left<=0){clearInterval(S.tid);S.running=false;if(t)t.textContent="時間切れ!";var b=document.getElementById("tg");if(b)b.textContent="終了";try{navigator.vibrate&&navigator.vibrate([300,100,300])}catch(e){}}
+}
+function toggle(){
+  var b=document.getElementById("tg");
+  if(S.left<=0)return;
+  if(S.running){clearInterval(S.tid);S.running=false;b.textContent="再開"}
+  else{S.running=true;S.tid=setInterval(tick,1000);b.textContent="一時停止"}
+}
+function vote(){
+  clearInterval(S.tid);S.running=false;S.step="vote";
+  var h='<h2>投票</h2><p class="sub">せーので全員が同時に指さし、いちばん票を集めた人を選んでください(同票なら決選投票)</p><div class="grid">';
+  for(var i=0;i<S.n;i++)h+='<button data-a="pick" data-i="'+i+'">'+esc(nm(i))+'</button>';
+  h+='</div>';app.innerHTML=h;
+}
+function result(v){
+  S.step="result";S.voted=v;var caught=isWolf(v);
+  var h='<h2>結果発表</h2><div class="card"><p class="note">最多票は…</p><div class="big">'+esc(nm(v))+'さん</div>';
+  if(caught){
+    h+='<div class="win" style="color:var(--ok)">ウルフを見つけた!</div><p class="note">ただしウルフは最後のチャンス。市民のお題を当てれば逆転勝ちです。</p>';
+    h+='<div class="grid"><button data-a="guess" data-g="1">当てた(ウルフの勝ち)</button><button data-a="guess" data-g="0">外した(市民の勝ち)</button></div>';
+  }else{
+    h+='<div class="win" style="color:var(--ng)">市民ではなくウルフ以外の人でした…ウルフの勝ち!</div>';
+    h+=reveal2();
+  }
+  h+='</div>';app.innerHTML=h;
+}
+function reveal2(){
+  var h='<ul>';
+  for(var i=0;i<S.n;i++){var w=isWolf(i);h+='<li><span>'+esc(nm(i))+'</span><span><span class="tag '+(w?"w":"c")+'">'+(w?"ウルフ":"市民")+'</span> '+esc(w?S.pair[1]:S.pair[0])+'</span></li>'}
+  h+='</ul><button class="main" data-a="again">同じメンバーでもう一度</button><button class="alt" data-a="setup">設定に戻る</button>';
+  return h;
+}
+function guess(g){
+  var h='<h2>結果発表</h2><div class="card"><div class="win" style="color:'+(g?"var(--ng)":"var(--ok)")+'">'+(g?"ウルフの逆転勝ち!":"市民の勝ち!")+'</div>'+reveal2()+'</div>';
+  app.innerHTML=h;
+}
+app.addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;var a=b.getAttribute("data-a");
+  if(a==="n-"&&S.n>3){S.n--;setup()}
+  else if(a==="n+"&&S.n<10){S.n++;setup()}
+  else if(a==="w-"&&S.wolves>1){S.wolves--;setup()}
+  else if(a==="w+"&&S.wolves<maxWolves()){S.wolves++;setup()}
+  else if(a==="m-"&&S.min>1){S.min--;setup()}
+  else if(a==="m+"&&S.min<10){S.min++;setup()}
+  else if(a==="start")start();
+  else if(a==="show"){S.shown=true;reveal()}
+  else if(a==="hide"){S.shown=false;S.i++;if(S.i<S.n)reveal();else discuss()}
+  else if(a==="tg")toggle();
+  else if(a==="vote")vote();
+  else if(a==="pick")result(parseInt(b.getAttribute("data-i"),10));
+  else if(a==="guess")guess(b.getAttribute("data-g")==="1");
+  else if(a==="again")start();
+  else if(a==="setup")setup();
+});
+app.addEventListener("input",function(e){
+  var i=e.target.getAttribute&&e.target.getAttribute("data-i");
+  if(i!==null&&e.target.tagName==="INPUT")S.names[parseInt(i,10)]=e.target.value;
+});
+setup();
+</script>
+</body>
+</html>
